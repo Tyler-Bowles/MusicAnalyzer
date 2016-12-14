@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Music Analyzer by MightyTyGuy</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Music Analyzer</h1>
+        <h2>An experiment in applying machine learning to music analysis</h2>
+        <a href="https://github.com/MightyTyGuy/MusicAnalyzer" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a id="music-analyzer" class="anchor" href="#music-analyzer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Music Analyzer</h1>
+
+<h2>
+<a id="abstract" class="anchor" href="#abstract" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Abstract</h2>
+
+<p>Music is an expressive venue and as such, has significant emotive content. An algorithm to detect emotions could have commercial and therapeutic use.
+We study the applicability of neural networks and genetic algorithms to predicting people’s emotional reactions to music by considering separetely the aural and lyrical components.</p>
+
+<h2>
+<a id="problem-description" class="anchor" href="#problem-description" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Problem Description</h2>
+
+<p>It is hypothesized that emotive content is encoded in audio and lyrical data.
+We set out to implement an algorithm that recognizes emotional content in these components.
+While sentiment and tone analysis is usually done with classification in mind, this project is an experiment in predicting numerical measures of emotional states via regression.</p>
+
+<p>Both individual words and songs from the data sets listed below were mapped to a two dimensional vector space called the arousal/valence scale.
+High arousal indicates high energy emotions such as anger or excitement.
+Valence determines how positive an emotion is. For example, high valence would include emotions such as
+calm and happy, while low valence may include sadness or fear.</p>
+
+<p>Our algorithms produce arousal/valence vectors for wav files and lyrical text files on a scale of -5 to 5 for both measures.</p>
+
+<h2>
+<a id="data-acquisition" class="anchor" href="#data-acquisition" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data Acquisition</h2>
+
+<p>Three primary data sources are used:</p>
+
+<ol>
+<li>A set of approximately 14,000 words that are mapped to arousal/valence vector space, with both coordinates ranging from 0 to 10. [4]</li>
+<li>Set of 1000 forty-five second clips of songs that are mapped to the arousal/valence vector space, with both coordinates ranging from 0 to 10. [3]</li>
+<li>45 lyric files were manually found using the Google Search engine for various songs in the 1000 song data set.</li>
+</ol>
+
+<p>After data aquisition, the arousal/valence values in the annotations for the data set were shifted to a range of -5 to 5 in order to give more intuition behind the magnitude and sign of an emotion vector (e.g. the 0 vector is apathy, negative-valued valence indicates negative emotion). The 1000 song data set contained emotion annotations collected continuously throughout the duration of each audio clip, but only the mean arousal/valence annotations for each clip was used in our analysis.</p>
+
+<h2>
+<a id="audio-analysis" class="anchor" href="#audio-analysis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Audio Analysis</h2>
+
+<h3>
+<a id="methods" class="anchor" href="#methods" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Methods</h3>
+
+<p>Audio is imported in the time domain and converted to the frequency domain via the Discrete Fourier Transform (DFT or FFT). The frequency distribution is smoothed using the discrete analog of an integral convolution:</p>
+
+<p><img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/DiscreteConvolution.PNG?raw=true" alt="Discrete Convolution Formula"></p>
+
+<p>which helps eliminate noise and insignificant contributing frequencies.
+Four methods are then used for feature extraction for comparing predictive value:</p>
+
+<ol>
+<li>A third party library [1] extracts several common features generally used for signal processing, including energy spectra, Mel frequency cepstrum coefficients (MFCCs), and beats per minute estimation.</li>
+<li>Bins whose width grows logarithmically are centered around each of the frequencies corresponding to the 96 most common and easily heard western semitones [2]. The 96 bins are collapsed into the 12 western musical notes by summing over the average and maximum values within bins separated by octaves. Estimated BPM is appended.</li>
+<li>Maximum intensity and average intensity within each of the 96 semitone bins are calculated, and BPM is again used.</li>
+<li>The 20 highest intensity frequencies are identified and sorted.
+Each of these is then passed to a regression neural network which maps onto the 2-dimensional arousal/valence scale (each ranging from -5 to 5).
+The network is trained based on a 1000 song database with available emotion-vector annotations [3].
+<img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/AudioAnalysisDiagram.PNG?raw=true" alt="Audio Analysis Diagram - Raw Audio to Fourier Transform to Convolution to Features">
+</li>
+</ol>
+
+<h3>
+<a id="results" class="anchor" href="#results" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results</h3>
+
+<p>Method 4 (20 maxima) was severely problematic. Attempts to extract sufficiently distinct local maxima were unsuccessful, even after significant smoothing, and only noisy neighbors of the largest local maxima were extracted. This method was discarded. Feature extraction for the other 3 methods varied wildly in computational time. The NNs were trained on 2500 epochs, yielding the following mean errors:</p>
+
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th align="left">Mean Error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3rd Party</td>
+<td align="left">1.722</td>
+</tr>
+<tr>
+<td>12 Notes</td>
+<td align="left">1.611</td>
+</tr>
+<tr>
+<td>96 Semitones</td>
+<td align="left">2.733</td>
+</tr>
+</tbody>
+</table>
+
+<p>Error was measured as distance from predicted vector to target vector, an example of some predicted vectors vs the target vectors is given in the figure below.</p>
+
+<p><img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/ProjectedVectors.png?raw=true" alt="Example of Projected and Actual Emotion Vectors"></p>
+
+<p>After the initial drop in error in the first 50 epochs, additional training caused very gradual improvement with the exception of method 3, which seemed to overfit the data and worsen on new data over time.
+The methods applied appear ill-equipped to improve beyond the error shown here, which may arise because of inadequacies in the algorithms or variance in the data. Among all models, method 2 performed best when tested with new data.</p>
+
+<p><img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/ErrorConvergence.png?raw=true" alt="Neural Network Errors Throughout Training plot"></p>
+
+<h2>
+<a id="lyric-analysis" class="anchor" href="#lyric-analysis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Lyric Analysis</h2>
+
+<h3>
+<a id="methods-1" class="anchor" href="#methods-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Methods</h3>
+
+<p><strong>Emotion Trajectory:</strong></p>
+
+<p>An emotion vector for a lyric sheet is calculated by tracking a trajectory of the emotion in a song, and this information is utilized in several different way for comparison.
+A trajectory of the emotional state embedded in song lyrics is estimated in using variants of two primary
+methods.</p>
+
+<ol>
+<li>Naive summation of the emotion vectors associated with each word</li>
+<li>A genetic algorithm accounting for context of words</li>
+</ol>
+
+<p>The process of emotion trajectory calculation is depicted in the figure below.</p>
+
+<p><img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/Trajectory.png?raw=true" alt="Emotion trajectory in arousal/valence space"></p>
+
+<p>It is hypothesized that the genetic algorithm will be capable of accounting for grammatical information
+that the naïve approach can not.</p>
+
+<p><strong>Genetic Algorithm:</strong></p>
+
+<ul>
+<li>GA search space considers current word’s emotion vector, previous emotion state vectors,
+current word’s part of speech, previous word’s part of speech, and word position in phrases.</li>
+<li>Fitness is calculated based on average Euclidian distance from predicted AV vector to expected
+AV vector.</li>
+<li>GA was trained using 45 lyric files mapped to AV vectors given in the 1000 song data set.</li>
+<li>Two versions were used - genetic algorithm 1 utilizes all words in the lyric file whereas genetic algorithm 2 ignores all words without an associated emotion vector from the acquired dictionary.</li>
+</ul>
+
+<h3>
+<a id="results-1" class="anchor" href="#results-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results</h3>
+
+<ol>
+<li>Both genetic algorithms converge to an error better than a random guess.</li>
+<li>Randomly guessing a vector is more effective on this data than summing word emotion vectors in any of the naïve methods</li>
+<li>Resulting emotion vector predictions tend to be extreme, indicating that the lyrical component of this problem may be better characterized as a classification problem rather than one of regression.</li>
+</ol>
+
+<p><img src="https://github.com/MightyTyGuy/MusicAnalyzer/blob/master/MDImages/LyricErrorConvergence.png?raw=true" alt="Lyric Error Convergence"></p>
+
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th align="left">Mean Error</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Naive + Errf</td>
+<td align="left">10.0577</td>
+</tr>
+<tr>
+<td>Naive + Tanh</td>
+<td align="left">7.6251</td>
+</tr>
+<tr>
+<td>Naive + Tanh + Decay</td>
+<td align="left">7.7224</td>
+</tr>
+<tr>
+<td>Random Guess</td>
+<td align="left">5.201</td>
+</tr>
+<tr>
+<td>Genetic Algorithm 1</td>
+<td align="left">3.3929</td>
+</tr>
+<tr>
+<td>Genetic Algorithm 2</td>
+<td align="left">3.9895</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="conclusions-and-future-directions" class="anchor" href="#conclusions-and-future-directions" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Conclusions and Future Directions</h2>
+
+<h3>
+<a id="audio" class="anchor" href="#audio" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Audio</h3>
+
+<p>We suggest that audio analysis method 3, which bins frequencies according to the 96 most common semitones found in western music, was susceptible to overfitting because the freedom of allowing 96 features causes the features to be very specific to each datum rather than representing a trend. While the error terms in all 3 methods do not converge to zero, they are small enough to suggest continued research into these methods. Possible approaches include:</p>
+
+<ul>
+<li>Sampling and analyzing audio at smaller, random intervals to extract localized features</li>
+<li>Examining whether this problem would be better suited for classification than regression</li>
+<li>Training a NN for combined lyrical and audio prediction, as well as analysis of the relative predictive value of each</li>
+<li>Investigation of the high variance in time required to extract features from audio files</li>
+</ul>
+
+<h3>
+<a id="lyrics" class="anchor" href="#lyrics" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Lyrics</h3>
+
+<p>It appears that a genetic algorithm will potentially be able to analyze emotion content more effectively
+than a naïve summation approach. Our results indicate that the genetic algorithm is highly sensitive to the fitness and sigmoidal-type functions used to fit the data. Fine-tuning these parameters may result in improved accuracy.
+Compared with results found on the audio analysis, the lyrical analysis makes much weaker predictions, indicating that potentially emotional content is found primarily in audio rather than lyrical mediums.
+Further work on updating the genetic algorithm's search space will potentially yield better results.
+Training was poor due to a limited training data set, future work collecting an appropriate lyrical data
+set would enhance future results.</p>
+
+<h2>
+<a id="references" class="anchor" href="#references" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>References</h2>
+
+<p>[1] Giannakopoulos, Theodoros. "PyAudioAnalysis: An Open-Source Python Library for Audio Signal Analysis." Plos One 10.12 (2015): n. pag. Web. Nov. 2016.</p>
+
+<p>[2] Suits, B. H. "Frequencies of Musical Notes, A4 = 440 Hz." Physics of Music. Michigan Technological University, n.d. Web. 25 Oct. 2016. </p>
+
+<p>[3] Soleymani, M. et. al. (2014) 1000 Songs Database.   <a href="http://cvml.unige.ch/databases/emoMusic/dataset_manual.pdf">http://cvml.unige.ch/databases/emoMusic/dataset_manual.pdf</a></p>
+
+<p>[4] Warriner, A. B., Kuperman, V., &amp; Brysbaert, M. (2013). Norms of valence, arousal, and dominance for
+13,915 English lemmas. Behavior research methods, 45(4), 1191-1207. Retrieved
+from <a href="http://crr.ugent.be/archives/1003">http://crr.ugent.be/archives/1003</a></p>
+
+<p>[5] Misztal, J., &amp; Indurkhya, B. (2014). Poetry generation system with an emotional personality.
+In Proceedings of 5th International Conference on Computational Creativity, ICCC. Oudenne, A. M., &amp; Chasins, S. E. Identifying the Emotional Polarity of Song Lyrics through Natural
+Language Processing</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/MightyTyGuy/MusicAnalyzer/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/MightyTyGuy/MusicAnalyzer/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/MightyTyGuy/MusicAnalyzer"></a> is maintained by <a href="https://github.com/MightyTyGuy">MightyTyGuy</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
